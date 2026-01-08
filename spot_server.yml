@@ -3,6 +3,8 @@ info:
   version: 1.0.0
   title: Server API
   description: Server internal status and time API.
+  contact:
+    email: developer@big.one
 servers:
   - url: 'https://api.big.one/api/v3'
 paths:

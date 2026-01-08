@@ -4,7 +4,7 @@ info:
   title: Convert REST API
   description: API for BigONE Convert (Swap) service.
   contact:
-    email: support@big.one
+    email: developer@big.one
 servers:
   - url: 'https://api.big.one/sapi/v1/convert'
 tags:

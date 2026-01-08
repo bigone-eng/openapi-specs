@@ -2,6 +2,8 @@ openapi: 3.0.3
 info:
   title: BigONE Contract REST API
   version: 2.0.0
+  contact:
+    email: developer@big.one
   description: |
     API for BigONE Contract Trading. 
     The base URL for all requests is `https://api.big.one/api/contract/v2`.

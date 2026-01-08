@@ -3,7 +3,7 @@ info:
   version: 1.0.0
   title: PXN OpenAPI
   contact:
-    email: yuchanghong@pxn.one
+    email: developer@big.one
 servers:
   - url: 'https://api.big.one/api/v3'
 tags:
