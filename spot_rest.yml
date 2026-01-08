@@ -692,29 +692,6 @@ components:
           type: string
           description: Error message
           example: "Parameter error"
-    CreateCustomerBody:
-      type: object
-      required:
-        - email
-        - identity
-      properties:
-        email:
-          type: string
-          description: User Email
-          example: test@example.com
-        mobile:
-          type: string
-          description: User Mobile
-          example: 13888888888
-        nation_code:
-          type: string
-          description: User Mobile
-          example: 86
-        identity:
-          type: string
-          description: User identity
-          example: SOME_IDENTITY
-
     CreateOrderBody:
       type: object
       required: [asset_pair_name, side, amount, type]
