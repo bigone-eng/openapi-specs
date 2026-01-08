@@ -701,7 +701,7 @@ components:
         email:
           type: string
           description: User Email
-          example: test@pxn.one
+          example: test@example.com
         mobile:
           type: string
           description: User Mobile
