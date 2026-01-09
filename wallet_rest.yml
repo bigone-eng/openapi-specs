@@ -561,6 +561,11 @@ components:
           type: string
           description: The amount to withdraw.
           example: "100.00"
+        target_account:
+          type: string
+          description: The source account for withdrawal deduction.
+          enum: [ SPOT, FUND ]
+          default: FUND
         target_address:
           type: string
           description: The destination wallet address.
