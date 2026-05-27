@@ -42,7 +42,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SimpleAsset'
+                  $ref: '#/components/schemas/Asset'
 
   /viewer/fund/accounts:
     get:
@@ -359,7 +359,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    SimpleAsset:
+    Asset:
       type: object
       description: An asset with public metadata and available network settings.
       properties:
@@ -395,8 +395,8 @@ components:
           type: array
           description: Public network configurations available for the asset.
           items:
-            $ref: '#/components/schemas/SimpleBindingGateway'
-    SimpleBindingGateway:
+            $ref: '#/components/schemas/BindingGateway'
+    BindingGateway:
       type: object
       description: A public deposit or withdrawal network configuration.
       properties:
