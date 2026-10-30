@@ -550,6 +550,95 @@ paths:
                         type: array
                         items:
                           type: object
+  /viewer/orders/cancel/multi:
+    post:
+      tags:
+        - Order
+      summary: Cancel Multiple Orders
+      operationId: cancelMultipleOrders
+      description: |-
+        Cancels 1–10 specified orders belonging to the authenticated account. Provide exactly one non-empty list: `order_ids` or `client_order_ids`. No asset pair or `symbol` parameter is required.
+
+        Required scope: **create orders**. Use [Bearer JWT authentication](../../authentication.mdx), including the existing nonce and time-window checks. Generate a fresh JWT for every HTTP request, including retries. Existing OpenAPI rate limits apply.
+
+        :::note[Request Validation]
+        The selected list must contain 1–10 unique IDs. The other list may be omitted, `null`, or empty. Client order IDs are not trimmed or normalized. The body must be a single complete JSON object; trailing whitespace is allowed, but extra JSON values or invalid text are rejected. Invalid JSON, field types, or batch parameters return HTTP 400 / `10007` before any cancellation is attempted.
+        :::
+
+        :::note[Order ID Precision]
+        Send order IDs as positive JSON integers within the unsigned 64-bit range (1–18446744073709551615). Strings, fractions, negative numbers, and overflow are rejected. Preserve the exact value when serializing; JavaScript `Number` cannot represent every valid order ID.
+        :::
+
+        HTTP 200 and outer `code=0` mean the batch was processed, even if every item was rejected. Check each item's `status` and `code`. Results follow the input order, with one result per input. Each order is attempted at most once, in sequence; a rejected item does not stop the remaining orders, and successful cancellations are not rolled back.
+
+        | Status | Meaning | Per-Order Code |
+        | --- | --- | --- |
+        | `cancelled` | Cancellation success was confirmed. | `0`; `message` is omitted. |
+        | `rejected` | Explicit business rejection. | Existing business error code and public message. |
+        | `unknown` | Attempted, but the outcome could not be confirmed. | `10005` |
+        | `not_attempted` | Not started when the request ended; no further cancellations are started. | `10005` |
+
+        Common rejection codes are `10013` (order not found), `40303` (market order cannot be cancelled), `10403` (cancellation forbidden), `10007` (invalid parameters), and `40621` (order count limit). Maintenance can return `rejected` with `10005`; always check `status` together with `code`. Orders owned by another account are reported as not found.
+
+        :::warning[Verify Unknown Outcomes Before Retrying]
+        A timeout, disconnection, or internal error may occur after an order has already been cancelled. Query the order before deciding whether to retry; the endpoint does not retry automatically. If the connection closes without a response, do not assume the entire batch was left untouched.
+
+        Use [Get Order by ID or Client ID](/docs/spot/rest/get-order): `GET /api/v3/viewer/order?order_id=123` or `GET /api/v3/viewer/order?client_order_id=strategy_buy_001`. Queries require the **view order information** scope.
+        :::
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchCancelOrdersBody"
+            examples:
+              order_ids:
+                summary: Cancel by order IDs
+                value:
+                  order_ids:
+                    - 123
+                    - 456
+              client_order_ids:
+                summary: Cancel by client order IDs
+                value:
+                  client_order_ids:
+                    - strategy_buy_001
+                    - strategy_buy_002
+      responses:
+        "200":
+          description: Batch processed; inspect each result for partial success, rejection, unknown outcomes, or items not attempted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchCancelOrdersResponse"
+              example:
+                code: 0
+                data:
+                  - order_id: 123
+                    client_order_id: strategy_buy_001
+                    status: cancelled
+                    code: 0
+                  - order_id: 456
+                    status: rejected
+                    code: 10013
+                    message: Resource not found
+        "400":
+          description: Invalid JSON, field types, or batch parameters (10007). No cancellation was attempted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: 10007
+                message: Invalid request parameters
+        "401":
+          description: Missing or invalid credentials, including an expired or reused nonce.
+        "403":
+          description: Missing required scope or rejection by existing authentication rules.
+        "429":
+          description: Existing OpenAPI rate limit exceeded.
   /viewer/trades:
     get:
       tags:
@@ -751,6 +840,93 @@ components:
           description: The unique client order ID assigned by the user.
           example: "my-order-001"
 
+    BatchCancelOrdersBody:
+      type: object
+      description: Exactly one non-empty list is required. The unselected list may be omitted, null, or empty.
+      properties:
+        order_ids:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          nullable: true
+          description: 1–10 unique positive BigONE order IDs (uint64). Preserve integer precision; quoted strings are rejected.
+          items:
+            type: integer
+            format: uint64
+            minimum: 1
+          example:
+            - 123
+            - 456
+        client_order_ids:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          nullable: true
+          description: 1–10 unique client order IDs assigned when placing orders. Each contains 1–36 English letters, digits, hyphens, or underscores; values are not trimmed or normalized.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 36
+            pattern: ^[a-zA-Z0-9-_]{1,36}$
+          example:
+            - strategy_buy_001
+            - strategy_buy_002
+      example:
+        order_ids:
+          - 123
+          - 456
+    BatchCancelOrderResult:
+      type: object
+      required:
+        - status
+        - code
+      properties:
+        order_id:
+          type: integer
+          format: uint64
+          minimum: 1
+          description: Input order ID, or the actual order ID obtained on success. Omitted if unavailable.
+          example: 123
+        client_order_id:
+          type: string
+          description: Input client order ID, or the ID obtained on success. Omitted if unset or unavailable.
+          example: strategy_buy_001
+        status:
+          type: string
+          enum:
+            - cancelled
+            - rejected
+            - unknown
+            - not_attempted
+          description: "Per-order outcome: confirmed success, explicit business rejection, attempted with unknown outcome, or not started before the request ended."
+          example: cancelled
+        code:
+          type: integer
+          description: "Per-order result code: 0 on success, 10005 for unknown/not_attempted, or the business rejection code."
+          example: 0
+        message:
+          type: string
+          description: "Public outcome message; omitted on success. unknown: Order cancellation result is unknown; query the order before retrying. not_attempted: Order cancellation was not attempted because the request ended."
+          example: Resource not found
+    BatchCancelOrdersResponse:
+      type: object
+      required:
+        - code
+        - data
+      properties:
+        code:
+          type: integer
+          enum:
+            - 0
+          description: Batch processing result. 0 does not mean every cancellation succeeded.
+          example: 0
+        data:
+          type: array
+          minItems: 1
+          maxItems: 10
+          description: One result per input, in the same order. Each order retains its input identifier.
+          items:
+            $ref: "#/components/schemas/BatchCancelOrderResult"
     CancelAllOrdersBody:
       type: object
       required: [asset_pair_name]
