@@ -574,11 +574,11 @@ paths:
         | Status | Meaning | Per-Order Code |
         | --- | --- | --- |
         | `cancelled` | Cancellation success was confirmed. | `0`; `message` is omitted. |
-        | `rejected` | Explicit rejection, including orders reported as failed by batch cancellation. | `10005` with a generic rejection message when no individual reason is available; otherwise a known business code. |
+        | `rejected` | Explicit rejection, including orders reported as failed by batch cancellation. | `54043` / `unknown opening order` for failed order IDs; otherwise a known business code. |
         | `unknown` | Submitted in a batch, but the individual outcome could not be confirmed. | `10005` |
         | `not_attempted` | Not submitted because of a lookup failure without a definite business rejection, or because the request ended before submission. | `10005` |
 
-        Batch cancellation does not provide individual failure reasons: a failed order returns `rejected`, `10005`, and `Order cancellation was rejected; no further reason is available.` Do not infer that the order is missing or that a particular business rule caused the rejection. A client ID lookup that reports an order as missing returns `rejected` / `10013`; other accounts' orders cannot be cancelled. Maintenance returns `rejected` / `10005` with its public message. Always check `status` together with `code`.
+        Failed order IDs uniformly return `rejected`, `54043`, and `unknown opening order`, matching single-order cancellation. Already cancelled, fully filled, missing, and other rejected orders are not distinguished because batch cancellation does not provide individual reasons. A client ID lookup that reports an order as missing returns the same error; other accounts' orders cannot be cancelled. Maintenance returns `rejected` / `10005` with its public message. Always check `status` together with `code`.
 
         :::warning[Verify Unknown Outcomes Before Retrying]
         A batch RPC error may occur after some orders have already been cancelled. Without individual results, submitted orders are reported as `unknown`; missing or conflicting individual results are also `unknown`. Query the order before deciding whether to retry; the endpoint does not retry automatically. If the connection closes without a response, do not assume the entire batch was left untouched.
@@ -621,8 +621,8 @@ paths:
                     code: 0
                   - order_id: 456
                     status: rejected
-                    code: 10005
-                    message: Order cancellation was rejected; no further reason is available.
+                    code: 54043
+                    message: unknown opening order
         "400":
           description: Invalid JSON, field types, or batch parameters (10007). No cancellation was attempted.
           content:
@@ -901,12 +901,12 @@ components:
           example: cancelled
         code:
           type: integer
-          description: "Per-order result code: 0 on success; 10005 for generic rejection, unknown, or not_attempted; otherwise a known business code."
+          description: "Per-order result code: 0 on success; 54043 for failed order IDs or missing client order IDs; 10005 for unknown or not_attempted; otherwise a known business code."
           example: 0
         message:
           type: string
-          description: "Public outcome message; omitted on success. Generic rejection: Order cancellation was rejected; no further reason is available. unknown: Order cancellation result is unknown; query the order before retrying. not_attempted: Order cancellation was not attempted."
-          example: Resource not found
+          description: "Public outcome message; omitted on success. Failed order: unknown opening order. unknown: Order cancellation result is unknown; query the order before retrying. not_attempted: Order cancellation was not attempted."
+          example: unknown opening order
     BatchCancelOrdersResponse:
       type: object
       required:
