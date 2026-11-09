@@ -939,25 +939,35 @@ components:
           post_only: true
           client_order_id: replace-btc-002
       oneOf:
-        - required: [order_id]
+        - title: By Order ID
+          type: object
+          required: [order_id]
           properties:
             order_id:
+              type: integer
+              format: int64
               minimum: 1
-        - required: [client_order_id]
+              description: The old order ID. Use this or the top-level client_order_id, not both. Zero does not identify an order.
+              example: 12345678
+            client_order_id:
+              type: string
+              maxLength: 0
+              description: Omit when using order_id. If provided, this must be an empty string.
+        - title: By Client Order ID
+          type: object
+          required: [client_order_id]
           properties:
             client_order_id:
+              type: string
               minLength: 1
+              description: The old order's client ID. Use this or order_id, not both. This is distinct from new_order.client_order_id.
+              example: original-btc-001
+            order_id:
+              type: integer
+              format: int64
+              enum: [0]
+              description: Omit when using client_order_id. If provided, this must be zero.
       properties:
-        order_id:
-          type: integer
-          format: int64
-          minimum: 0
-          description: The old order ID. Use this or the top-level client_order_id, not both. Zero does not identify an order.
-          example: 12345678
-        client_order_id:
-          type: string
-          description: The old order's client ID. Use this or order_id, not both. This is distinct from new_order.client_order_id.
-          example: original-btc-001
         new_order:
           $ref: '#/components/schemas/ReplaceLimitOrderBody'
 
